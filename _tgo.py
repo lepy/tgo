@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """ execfile('tgo.py')
 """
-#from __future__ import division, print_function, absolute_import
+from __future__ import division, print_function, absolute_import
 from UQToolbox.sobol_lib import i4_sobol_generate
  # TODO: Replace with latinhypercube sampling used in differentialevolution.py
 import numpy

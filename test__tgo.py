@@ -10,7 +10,7 @@ $ python2 -m unittest -v tgo_tests.TestTgoSubFuncs.test_t1
 """
 import unittest
 import numpy
-from tgo import *
+from _tgo import *
 
 class TestFunction(object):
     def __init__(self, bounds, expected_x, expected_fun=None,
