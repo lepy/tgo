@@ -10,7 +10,7 @@ import scipy.optimize
 
 from scipy.optimize._differentialevolution import DifferentialEvolutionSolver, _make_random_gen
 
-DES = DifferentialEvolutionSolver()
+#DES = DifferentialEvolutionSolver()
 
 #print DifferentialEvolutionSolver.init_population_lhs()
 #print _make_random_gen(None)
