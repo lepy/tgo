@@ -1,22 +1,22 @@
 import numpy
 from _tgo import *
-def frac_dec2bin(f):  # Convert frac decimals to their bin strings (w/ no dec)
-    if f == 0:
+def frac_dec2bin(float):  # Convert frac decimals to their bin strings (w/ no dec)
+    if float == 0:
         return '0'
 
-    ig = 2**(-1)
-    st = ""
-    while f > 0 or ig >= 1:
-        if f < 1:
-            if len(st) >= 1000: # 10 fractional digits max
+    decp = 2**(-1)
+    fstr = ""
+    while float > 0 or decp >= 1:
+        if float < 1:
+            if len(fstr) >= 1000: # 10 fractional digits max
                    break
-        if f >= ig:
-            st += "1"
-            f -= ig
+        if float >= decp:
+            fstr += "1"
+            float -= decp
         else:
-            st += "0"
-        ig /= 2
-    return st
+            fstr += "0"
+        decp /= 2
+    return fstr
 
 
 
