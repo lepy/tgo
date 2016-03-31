@@ -19,9 +19,6 @@ def frac_dec2bin(float):  # Convert frac decimals to their bin strings (w/ no de
     return fstr
 
 
-
-
-
 #d       s       a       m_i
 #2       1       0       1
 #3       2       1       1 3

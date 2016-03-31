@@ -3,6 +3,12 @@
 import argparse
 import numpy
 
+try:
+    del P
+    del row
+except(NameError):
+    pass
+
 parser = argparse.ArgumentParser("Prints the first N sobol points in D dimensions. "
                                  "The points are generated in graycode order. "
                                  "The primitive polynomials and initial direction numbers are given by the input file.")
@@ -69,4 +75,5 @@ def sobol_points(N, D, f):
 P = sobol_points(args.N, args.D, args.file)
 
 for row in P:
-    print("{} {} {}".format(*row))
+    formatstring = "{} " * args.D
+    print(formatstring.format(*row))
