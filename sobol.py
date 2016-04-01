@@ -1,20 +1,22 @@
-""" sobol.cc translated to Python 3 by Carl Sandrock 2016-03-31 """
+""" sobol.cc translated to Python 3 by Carl Sandrock 2016-03-31
+
+The original program is available and described at
+http://web.maths.unsw.edu.au/~fkuo/sobol/
+
+"""
 
 import argparse
 import numpy
+import sys
 
-try:
-    del P
-    del row
-except(NameError):
-    pass
-
-parser = argparse.ArgumentParser("Prints the first N sobol points in D dimensions. "
-                                 "The points are generated in graycode order. "
-                                 "The primitive polynomials and initial direction numbers are given by the input file.")
+parser = argparse.ArgumentParser(
+    "Prints the first N sobol points in D dimensions. "
+    "The points are generated in graycode order. "
+    "The primitive polynomials and initial direction numbers are given by the input file.")
 parser.add_argument("N", type=int, help="Number of points")
 parser.add_argument("D", type=int, help="Dimensions")
 parser.add_argument("file", type=argparse.FileType('r'))
+parser.add_argument("-o", "--outfile", type=argparse.FileType('w'), default=sys.stdout)
 
 args = parser.parse_args()
 
@@ -26,17 +28,15 @@ def sobol_points(N, D, f):
 
     L = int(numpy.log(N)//numpy.log(2.0)) + 1
 
-    C = numpy.empty(N, dtype=unsigned)
-    C[0] = 1
+    C = numpy.ones(N, dtype=unsigned)
     for i in range(1, N):
-        C[i] = 1
         value = i
         while value & 1:
             value >>= 1
             C[i] += 1
-    
+
     POINTS = numpy.zeros((N, D), dtype='double')
-    
+
     # XXX: This appears not to set the first element of V
     V = numpy.empty(L+1, dtype=unsigned)
     for i in range(1, L+1):
@@ -48,13 +48,10 @@ def sobol_points(N, D, f):
         X[i] = X[i-1] ^ V[C[i-1]]
         POINTS[i, 0] = X[i]/2**32
 
-    del V
-    del X
-
     for j in range(1, D):
-        d, s, a, *m = [int(item) for item in next(f).strip().split()]
-        m = [0] + m # m's indexes start at 1
-        V = numpy.empty(L + 1, dtype=unsigned)
+        F_int = [int(item) for item in next(f).strip().split()]
+        (d, s, a), m = F_int[:3], [0] + F_int[3:]
+
         if L <= s:
             for i in range(1, L+1): V[i] = m[i] << (32 - i)
         else:
@@ -64,16 +61,14 @@ def sobol_points(N, D, f):
                 for k in range(1, s):
                     V[i] ^= numpy.array((((a >> (s-1-k)) & 1) * V[i-k]), dtype=unsigned)
 
-        # XXX: This gets reassigned to what it was before, may be faster to clear
-        X = numpy.empty(N, dtype=unsigned)
+        X[0] = 0
         for i in range(1, N):
             X[i] = X[i-1] ^ V[C[i-1]]
-            POINTS[i][j] = X[i]/2**32  # *** the actual points
+            POINTS[i, j] = X[i]/2**32  # *** the actual points
 
     return POINTS
-                
+
 P = sobol_points(args.N, args.D, args.file)
 
 for row in P:
-    formatstring = "{} " * args.D
-    print(formatstring.format(*row))
+    args.outfile.write(" ".join(["{}"]*len(row)).format(*row) + "\n")
