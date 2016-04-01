@@ -3,13 +3,11 @@
 """ execfile('tgo.py')
 """
 from __future__ import division, print_function, absolute_import
-from UQToolbox.sobol_lib import i4_sobol_generate
- # TODO: Replace with latinhypercube sampling used in differentialevolution.py
 import numpy
 import scipy.spatial
 import scipy.optimize
 
-def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, skip=1, k_t=None,
+def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, k_t=None,
         callback=None, minimizer_kwargs=None, disp=False):
     """
     Finds the global minima of a function using topograhphical global
@@ -59,9 +57,6 @@ def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, skip=1, k_t=None,
     n : int, optional
         Number of sampling points used in the construction of the topography
         matrix.
-
-    skip : int, optional
-        Tthe number of initial points to skip in the Sobol generation sequence.
 
     k : int, optional
         Defines the number of columns constructed in the k-t matrix. The higher
@@ -135,11 +130,17 @@ def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, skip=1, k_t=None,
            approximate evaluation of integrals. USSR Comput. Math. Math. Phys.
            7, 86-112.
 
+
+    #TODO Add references for direction numbers
+    sobol.cc translated to Python 3 by Carl Sandrock 2016-03-31
+
+    The original program is available and described at
+    http://web.maths.unsw.edu.au/~fkuo/sobol/
     """
     # Initiate TGO class
     TGOc = TGO(func, bounds, args=args, g_func=g_func, g_args=g_args, n=n,
-               skip=skip, k_t=k_t, callback=callback,
-               minimizer_kwargs=minimizer_kwargs, disp=disp)
+               k_t=k_t, callback=callback, minimizer_kwargs=minimizer_kwargs,
+               disp=disp)
 
     # Generate sampling points
     TGOc.sampling()
@@ -175,7 +176,7 @@ class TGO(object):
     """
 
     def __init__(self, func, bounds, args=(), g_func=None, g_args=(), n=100,
-                 skip=1, k_t=None, callback=None, minimizer_kwargs=None,
+                 k_t=None, callback=None, minimizer_kwargs=None,
                  disp=False):
 
         self.func = func
@@ -184,7 +185,6 @@ class TGO(object):
         self.g_func = g_func
         self.g_args = g_args
         self.n = n
-        self.skip = skip
         self.k_t = k_t
         if k_t is not None:
             self.K_opt = k_t
@@ -209,6 +209,64 @@ class TGO(object):
         else:
             self.cons = ()
 
+    def sobol_points(self, N, D):
+        """ sobol.cc translated to Python 3 by Carl Sandrock 2016-03-31
+
+        The original program is available and described at
+        http://web.maths.unsw.edu.au/~fkuo/sobol/
+
+        """
+        with open('new-joe-kuo-6.21201') as f:
+            unsigned = "uint64"
+            # swallow header
+            buffer = next(f)
+
+            L = int(numpy.log(N) // numpy.log(2.0)) + 1
+
+            C = numpy.ones(N, dtype=unsigned)
+            for i in range(1, N):
+                value = i
+                while value & 1:
+                    value >>= 1
+                    C[i] += 1
+
+            points = numpy.zeros((N, D), dtype='double')
+
+            # XXX: This appears not to set the first element of V
+            V = numpy.empty(L + 1, dtype=unsigned)
+            for i in range(1, L + 1):
+                V[i] = 1 << (32 - i)
+
+            X = numpy.empty(N, dtype=unsigned)
+            X[0] = 0
+            for i in range(1, N):
+                X[i] = X[i - 1] ^ V[C[i - 1]]
+                points[i, 0] = X[i] / 2 ** 32
+
+            for j in range(1, D):
+                F_int = [int(item) for item in next(f).strip().split()]
+                (d, s, a), m = F_int[:3], [0] + F_int[3:]
+
+                if L <= s:
+                    for i in range(1, L + 1): V[i] = m[i] << (32 - i)
+                else:
+                    for i in range(1, s + 1): V[i] = m[i] << (32 - i)
+                    for i in range(s + 1, L + 1):
+                        V[i] = V[i - s] ^ (
+                        V[i - s] >> numpy.array(s, dtype=unsigned))
+                        for k in range(1, s):
+                            V[i] ^= numpy.array(
+                                (((a >> (s - 1 - k)) & 1) * V[i - k]),
+                                dtype=unsigned)
+
+                X[0] = 0
+                for i in range(1, N):
+                    X[i] = X[i - 1] ^ V[C[i - 1]]
+                    points[i, j] = X[i] / 2 ** 32  # *** the actual points
+
+            return points
+
+
     # %% Define funcs # TODO: Create tgo class to wrap all funcs
     def sampling(self):
         """
@@ -220,9 +278,9 @@ class TGO(object):
         self.m = len(self.bounds)  # Dimensions
 
         # Generate uniform sample points in R^m
-        self.B = i4_sobol_generate(self.m, self.n, self.skip)
-        self.C = numpy.column_stack([self.B[i] for i in range(self.m)])
-
+        #self.B = i4_sobol_generate(self.m, self.n, self.skip)
+        #self.C = numpy.column_stack([self.B[i] for i in range(self.m)])
+        self.C = self.sobol_points(self.n, self.m)
         # Distribute over bounds
         # TODO: Find a better way to do this
         for i in range(len(self.bounds)):

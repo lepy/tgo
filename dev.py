@@ -3,6 +3,7 @@ import numpy
 from _tgo import *
 
 from UQToolbox.sobol_lib import i4_sobol_generate
+#from sobol import sobol_points
  # TODO: Replace with latinhypercube sampling used in differentialevolution.py
 import numpy
 import scipy.spatial
@@ -31,6 +32,7 @@ for i in range(len(bounds)):
                (bounds[i][1] - bounds[i][0])
                + bounds[i][0] )
 
+sobol_points(N, D, f)
 
 from matplotlib import pyplot as plot
 

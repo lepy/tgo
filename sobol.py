@@ -16,7 +16,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument("N", type=int, help="Number of points")
 parser.add_argument("D", type=int, help="Dimensions")
 parser.add_argument("file", type=argparse.FileType('r'))
-parser.add_argument("-o", "--outfile", type=argparse.FileType('w'), default=sys.stdout)
+parser.add_argument("-o", "--outfile", type=argparse.FileType('w'),
+                    default=sys.stdout)
 
 args = parser.parse_args()
 
