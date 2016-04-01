@@ -76,7 +76,7 @@ def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, k_t=None,
         the function halts. If callback returns `True`, then the minimization
         is halted (any polishing is still carried out).
 
-# TODO:    minimizer_kwargs : dict, optional
+        minimizer_kwargs : dict, optional
         Extra keyword arguments to be passed to the minimizer
         ``scipy.optimize.minimize()`` Some important options could be:
 
@@ -202,12 +202,35 @@ class TGO(object):
 
         # Define constraint function used in local minimisation
         if g_func is not None:
-            self.cons = ({'type' : 'ineq',  # g_i(x) >= 0,  i = 1,...,m
-                          'fun' : g_func,  # The function defining the constraint.
-                          'args' : g_args
+            self.cons = ({'type': 'ineq',  # g_i(x) >= 0,  i = 1,...,m
+                          'fun': g_func,  # The function defining the constraint.
+                          'args': g_args
                           })
         else:
             self.cons = ()
+
+        if minimizer_kwargs is not None:
+            self.minimizer_kwargs = minimizer_kwargs
+            if 'args' not in minimizer_kwargs:
+                minimizer_kwargs['args'] = self.args
+
+            if 'method' not in minimizer_kwargs:
+                minimizer_kwargs['method'] = 'SLSQP'
+
+            if 'bounds' not in minimizer_kwargs:
+                minimizer_kwargs['bounds'] = self.bounds
+
+        else:
+            self.minimizer_kwargs = {'args': self.args,
+                                     'method': 'SLSQP',
+                                     'bounds': self.bounds}
+
+            # self.cons = ({'type' : 'ineq',  # g_i(x) >= 0,  i = 1,...,m
+            #               'fun' : g_func,  # The function defining the constraint.
+            #               'args' : g_args
+            #               })
+
+            #self.minimizer_kwargs['constraints'] = self.cons
 
     def sobol_points(self, N, D):
         """ sobol.cc translated to Python 3 by Carl Sandrock 2016-03-31
@@ -379,7 +402,8 @@ class TGO(object):
                                            constraints=self.cons
                                            )
 
-
+            # lres = scipy.optimize.minimize(self.func, self.C[ind, :],
+            #                                **self.minimizer_kwargs)
             self.x_vals.append(lres.x)
             self.Func_min[i] = lres.fun
 

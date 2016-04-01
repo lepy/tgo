@@ -15,6 +15,8 @@ $ python2 -m unittest -v tgo_tests.TestTgoSubFuncs.test_t1
 import unittest
 import numpy
 from _tgo import *
+#from scipy.optimize import _tgo
+#from scipy.optimize._tgo import tgo
 
 class TestFunction(object):
     def __init__(self, bounds, expected_x, expected_fun=None,
@@ -101,7 +103,6 @@ class Test3(TestFunction):
 test3 = Test3(bounds=[(13.0, 100.0), (0.0, 100.0)],
               expected_x=[14.095, 0.84296])
 
-
 class Test4(TestFunction):
     """ Rosenbrock's function  Ans x1 = 1, x2 = 1, f = 0 """
     g = None
@@ -140,29 +141,6 @@ test5_1 = Test5(bounds=[(-6, 6),
                 expected_funl=numpy.array([0.0, 0.0, 0.0, 0.0])
                 )
 
-class Test5(TestFunction):
-    """
-    Himmelblau's function
-    https://en.wikipedia.org/wiki/Himmelblau's_function
-    """
-    g = None
-
-    def f(self, x):
-        return (x[0]**2 + x[1] - 11)**2 + (x[0] + x[1]**2 - 7)**2
-
-
-test5_1 = Test5(bounds=[(-6, 6),
-                        (-6, 6)],
-                expected_x=None,
-                expected_fun=[0.0],  # Important to test that fun
-                # return is in the correct order
-                expected_xl=numpy.array([[3.0, 2.0],
-                                         [-2.805118, 3.1313212],
-                                         [-3.779310, -3.283186],
-                                         [3.584428, -1.848126]]),
-
-                expected_funl=numpy.array([0.0, 0.0, 0.0, 0.0])
-                )
 
 class Test6(TestFunction):
     """
@@ -184,10 +162,28 @@ test6_1 = Test6(bounds=[(-512, 512),
                 expected_fun=[-959.6407]
                 )
 
+class Test7(TestFunction):
+    """
+    Ackley function
+    https://en.wikipedia.org/wiki/Test_functions_for_optimization
+    """
+    g = None
+
+    def f(self, x):
+        arg1 = -0.2 * numpy.sqrt(0.5 * (x[0] ** 2 + x[1] ** 2))
+        arg2 = 0.5 * (numpy.cos(2. * numpy.pi * x[0])
+                      + numpy.cos(2. * numpy.pi * x[1]))
+        return -20. * numpy.exp(arg1) - numpy.exp(arg2) + 20. + numpy.e
+
+test7_1 = Test7(bounds=[(-5, 5), (-5, 5)],
+                expected_x=[0.,  0.],
+                expected_fun=[0.0]
+                )
 
 def run_test(test, args=(), g_args=()):
     res = tgo(test.f, test.bounds, args=args, g_func=test.g, g_args=g_args)
 
+    print res
     # Exceptional cases
     if test == test5_1:
         # Remove the extra minimizer found in this test
@@ -257,6 +253,9 @@ class TestTgoFuncs(unittest.TestCase):
         """Eggholder function"""
         run_test(test6_1)
 
+    def test_t7(self):
+        """Ackley function"""
+        run_test(test7_1)
 
 # $ python2 -m unittest -v tgo_tests.TestTgoSubFuncs
 class TestTgoSubFuncs(unittest.TestCase):
@@ -353,7 +352,3 @@ def tgo_suite():
 if __name__ == '__main__':
     TestTgo=tgo_suite()
     unittest.TextTestRunner(verbosity=2).run(TestTgo)
-
-
-
-
