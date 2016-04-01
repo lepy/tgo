@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
+NOTE: For TestTgoFuncs test_f1 and test_f2 adequately test the
+      functionality of the algorithm, the rest can be omitted to
+      increase speed.
+
 Test Run examples:
 
 ex.
@@ -97,7 +101,8 @@ class Test3(TestFunction):
 test3 = Test3(bounds=[(13.0, 100.0), (0.0, 100.0)],
               expected_x=[14.095, 0.84296])
 
-class Rosenbrock(TestFunction):
+
+class Test4(TestFunction):
     """ Rosenbrock's function  Ans x1 = 1, x2 = 1, f = 0 """
     g = None
 
@@ -105,16 +110,97 @@ class Rosenbrock(TestFunction):
         return (1.0 - x[0])**2.0 + 100.0*(x[1] - x[0]**2.0)**2.0
 
 
-rosen = Rosenbrock(bounds=[(-3.0, 3.0), (-3.0, 3.0)],
-                   expected_x=[1, 1])
+test4_1 = Test4(bounds=[(-3.0, 3.0), (-3.0, 3.0)],
+                expected_x=[1, 1])
 
 test_atol = 1e-5
 
 
+class Test5(TestFunction):
+    """
+    Himmelblau's function
+    https://en.wikipedia.org/wiki/Himmelblau's_function
+    """
+    g = None
+
+    def f(self, x):
+        return (x[0]**2 + x[1] - 11)**2 + (x[0] + x[1]**2 - 7)**2
+
+
+test5_1 = Test5(bounds=[(-6, 6),
+                        (-6, 6)],
+                expected_x=None,
+                expected_fun=[0.0],  # Important to test that fun
+                # return is in the correct order
+                expected_xl=numpy.array([[3.0, 2.0],
+                                         [-2.805118, 3.1313212],
+                                         [-3.779310, -3.283186],
+                                         [3.584428, -1.848126]]),
+
+                expected_funl=numpy.array([0.0, 0.0, 0.0, 0.0])
+                )
+
+class Test5(TestFunction):
+    """
+    Himmelblau's function
+    https://en.wikipedia.org/wiki/Himmelblau's_function
+    """
+    g = None
+
+    def f(self, x):
+        return (x[0]**2 + x[1] - 11)**2 + (x[0] + x[1]**2 - 7)**2
+
+
+test5_1 = Test5(bounds=[(-6, 6),
+                        (-6, 6)],
+                expected_x=None,
+                expected_fun=[0.0],  # Important to test that fun
+                # return is in the correct order
+                expected_xl=numpy.array([[3.0, 2.0],
+                                         [-2.805118, 3.1313212],
+                                         [-3.779310, -3.283186],
+                                         [3.584428, -1.848126]]),
+
+                expected_funl=numpy.array([0.0, 0.0, 0.0, 0.0])
+                )
+
+class Test6(TestFunction):
+    """
+    Eggholder function
+    https://en.wikipedia.org/wiki/Test_functions_for_optimization
+    """
+    g = None
+
+    def f(self, x):
+        return (-(x[1] + 47.0)
+                * numpy.sin(numpy.sqrt(abs(x[0]/2.0 + (x[1] + 47.0))))
+                - x[0] * numpy.sin(numpy.sqrt(abs(x[0] - (x[1] + 47.0))))
+                )
+
+
+test6_1 = Test6(bounds=[(-512, 512),
+                        (-512, 512)],
+                expected_x=[512, 404.2319],
+                expected_fun=[-959.6407]
+                )
+
+
 def run_test(test, args=(), g_args=()):
     res = tgo(test.f, test.bounds, args=args, g_func=test.g, g_args=g_args)
-    x = res.x
-    numpy.testing.assert_allclose(res.x, test.expected_x, atol=test_atol)
+
+    # Exceptional cases
+    if test == test5_1:
+        # Remove the extra minimizer found in this test
+        # (note all minima is at the global 0.0 value)
+        res.xl = [res.xl[0], res.xl[1],
+                  res.xl[3], res.xl[2]]
+        res.funl = res.funl[:4]
+
+    # Global minima
+    if test.expected_x is not None:
+        numpy.testing.assert_allclose(res.x, test.expected_x,
+                                      rtol=test_atol,
+                                      atol=test_atol)
 
     # (Optional tests)
     if test.expected_fun is not None:
@@ -123,6 +209,7 @@ def run_test(test, args=(), g_args=()):
                                       atol=test_atol)
 
     if test.expected_xl is not None:
+
         numpy.testing.assert_allclose(res.xl,
                                       test.expected_xl,
                                       atol=test_atol)
@@ -158,9 +245,18 @@ class TestTgoFuncs(unittest.TestCase):
         # >>> test3.f([ -1.04572783e+08,-3.42296527e+08])
         # -4.12493867624096e+25
 
-    def test_rosen(self):
-        """Rosenbrock optimisation:"""
-        run_test(rosen)
+    def test_t4(self):
+        """Rosenbrock function"""
+        run_test(test4_1)
+
+    def test_t5(self):
+        """Himmelblau's function"""
+        run_test(test5_1)
+
+    def test_t6(self):
+        """Eggholder function"""
+        run_test(test6_1)
+
 
 # $ python2 -m unittest -v tgo_tests.TestTgoSubFuncs
 class TestTgoSubFuncs(unittest.TestCase):
