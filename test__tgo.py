@@ -249,13 +249,11 @@ class Test9(TestFunction):
 
 
     """
-
     def f(self, x):
         return 0.01 * (x[0])**2 + (x[1])**2
 
     def g1(x):
         return x[0] * x[1] - 25.0
-
 
     def g2(x):
         return x[0]**2 + x[1]**2 - 25.0
@@ -263,7 +261,7 @@ class Test9(TestFunction):
     g = (g1, g2)
 
 test9_1 = Test9(bounds=[(2, 50), (0, 50)],
-                expected_x=[250**0.5 , 2.5**0.5],
+                expected_x=[250**0.5, 2.5**0.5],
                 expected_fun=[5.0]
                 )
 
@@ -304,7 +302,7 @@ test10_1 = Test10(bounds=[(-10, 10),]*7,
 
 def run_test(test, args=(), g_args=()):
     if test is not test10_1:
-        res = tgo(test.f, test.bounds, args=args, g_funcs=test.g,
+        res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
                   g_args=g_args)
 
     #print res
@@ -317,7 +315,7 @@ def run_test(test, args=(), g_args=()):
         res.funl = res.funl[:4]
 
     if test == test10_1:
-        res = tgo(test.f, test.bounds, args=args, g_funcs=test.g,
+        res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
                   g_args=g_args, n=1000)
 
 

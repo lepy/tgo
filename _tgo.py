@@ -7,13 +7,14 @@ import numpy
 import scipy.spatial
 import scipy.optimize
 
-def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
+
+def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
         k_t=None, callback=None, minimizer_kwargs=None, disp=False):
     """
     Finds the global minima of a function using topograhphical global
     optimisation.
 
-    Parameters TODO: REVIEW DOC
+    Parameters
     ----------
     func : callable
         The objective function to be minimized.  Must be in the form
@@ -33,23 +34,9 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
         Any additional fixed parameters needed to completely specify the
         objective function.
 
-    g_cons : tuple of callable functions, optional
+    g_cons : sequence of callable functions, optional
         Function used to define a limited subset to defining the feasible set
         of solutions in R^n in the form g(x) <= 0 applied as g : R^n -> R^m
-        ex 1. To impose the constraint  x[0] + x[1] + x[2] - 1 >= 0
-              Use the function definition
-
-              def g_funcs(x):  # x is an input array of sample points in R^m*n
-                  return -numpy.sum(x, axis=1) + 1.0#
-
-        ex 2. To impose the constraints:
-              (x[0] - 5)**2 + (x[1] - 5)**2  + 100 <= 0
-              -(x[0] - 6)**2 + (x[1] - 5)**2  - 82.81 <= 0
-              Use the function definition
-
-              def g_funcs(A):
-                  return ((-(C[:,0] - 5)**2 - (C[:,1] - 5)**2  - 100.0 >= 0.0)
-                         & ((C[:,0] - 6)**2 - (C[:,1] - 5)**2  - 82.81 >= 0.0))
 
         NOTE: If the ``constraints`` sequence used in the local optimization
               problem is not defined in ``minimizer_kwargs`` and a constrained
@@ -74,9 +61,9 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
         Defines the number of columns constructed in the k-t matrix. The higher
         k is the lower the amount of minimisers will be used for local search
         routines. If None the empirical model of Henderson et. al. (2015) will
-        be used. (Note: Lower ``k_t`` values decrease performance, but could
-        potentially be more robust due to testing more local minimisers in the
-        function hypersuface.
+        be used. (Note: Lower ``k_t`` values decrease performance depending
+        on the local solver used, but could potentially be more robust due
+        to testing more local minimisers in the function hypersuface.
 
     minimizer_kwargs : dict, optional
         Extra keyword arguments to be passed to the minimizer
@@ -87,6 +74,8 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
             args : tuple
                 Extra arguments passed to the objective function (``func``) and
                 its derivatives (Jacobian, Hessian).
+
+            options : {ftol: 1e-12}
 
     disp : bool, optional # (TODO)
         Display status messages
@@ -126,37 +115,39 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
     in the interior of the feasible set. These points are generated using the
     Sobol (1967) [3] sequence.
 
+    The local search method may be specified using the ``minimizer_kwargs``
+    parameter which is inputted to ``scipy.optimize.minimize``. By default
+    the ``SLSQP`` method is used. In general it is recommended to use the
+    ``SLSQP`` or ``COBYLA`` local minimization if inequality constraints
+    are defined for the problem since the other methods do not use constraints.
+
+    Performance can sometimes be improved by increasing ``n``
+
+    Forcing a low ``k_t`` value will
+
     The primitive polynomials and various sets of initial direction numbers for
     generating Sobol sequences is provided by [4] by Frances Kuo and
     Stephen Joe. The original program sobol.cc is available and described at
-    http://web.maths.unsw.edu.au/~fkuo/sobol/ translated to  Python 3 by
+    http://web.maths.unsw.edu.au/~fkuo/sobol/ translated to Python 3 by
     Carl Sandrock 2016-03-31
 
     Examples
     --------
-
-     Note that bounds determine the dimensionality of the objective
-     function and is therefore not optional, however you can speficify
-     empty bounds
+    Consider first the Rosenbrock function
 
     >>> from scipy.optimize import rosen, tgo
     >>> bounds = [(0,2), (0, 2), (0, 2), (0, 2), (0, 2)]
-    >>> result = differential_evolution(rosen, bounds)
+    >>> result = tgo(rosen, bounds)
     >>> result.x, result.fun
     (array([ 1.,  1.,  1.,  1.,  1.]), 2.9203923741900809e-18)
 
-    >>> from scipy.optimize import tgo
-    >>> import numpy as np
-    >>> def ackley(x):
-    ...     arg1 = -0.2 * np.sqrt(0.5 * (x[0] ** 2 + x[1] ** 2))
-    ...     arg2 = 0.5 * (np.cos(2. * np.pi * x[0]) + np.cos(2. * np.pi * x[1]))
-    ...     return -20. * np.exp(arg1) - np.exp(arg2) + 20. + np.e
-    >>> bounds = [(-5, 5), (-5, 5)]
-    >>> result = tgo(ackley, bounds)
-    >>> result.x, result.fun
-    (array([ -9.02894984e-11,  -9.02900391e-11]), 3.6116221124871117e-10)
+     Note that bounds sequence determine the dimensionality of the objective
+     function and is therefore not optional, however it's possible to specify
+     empty bounds example (None, None) which will be converted to large
+     float numbers.
 
-
+    Now consider the Eggholder function
+    (https://en.wikipedia.org/wiki/Test_functions_for_optimization)
     >>> from scipy.optimize import tgo
     >>> import numpy as np
     >>> def eggholder(x):
@@ -169,6 +160,9 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
     >>> result = tgo(eggholder, bounds)
     >>> result.x, result.fun
     (array([ 512.        ,  404.23180542]), -959.64066272085051)
+
+    ``tgo`` also has a return for any other local minima that was found, these
+    can be called using example:
     >>> result.xl, result.funl
     (array([[ 512.        ,  404.23180542],
            [-456.88574619, -382.6233161 ],
@@ -184,29 +178,54 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
            -565.99778097, -559.78685655, -557.85777903, -493.9605115 ,
            -426.48799655, -419.31194957]))
 
-    Now suppose we want _ a larger amount of local minima, this can be
-    accomplished by increasing the amount of sampling points:
+    Now suppose we want to find a larger amount of local minima, this can be
+    accomplished by either increasing the amount of sampling points ``n`` or
+    defining a lower value for ``k_t`` than the empirical correlation, ex.:
 
     >>> result2 = tgo(eggholder, bounds, n=1000)
     >>> len(result.xl), len(result2.xl)
     (10, 60)
 
+    >>> from scipy.optimize import tgo
+    >>> import numpy as np
+    >>> def ackley(x):
+    ...     arg1 = -0.2 * np.sqrt(0.5 * (x[0] ** 2 + x[1] ** 2))
+    ...     arg2 = 0.5 * (np.cos(2. * np.pi * x[0]) + np.cos(2. * np.pi * x[1]))
+    ...     return -20. * np.exp(arg1) - np.exp(arg2) + 20. + np.e
+    >>> bounds = [(-5, 5), (-5, 5)]
+    >>> result = tgo(ackley, bounds)
+    >>> result.x, result.fun
+    (array([ -9.02894984e-11,  -9.02900391e-11]), 3.6116221124871117e-10)
 
-    To add with non-linear constraints
 
-    Minimize: f(x) = - x_1 * x_2 * x_3
+    To demonstrate solving problems with non-linear constraints consider the
+    following example from [5] (Hock and Schittkowski problem 18):
 
-    Subject to: (x_1)**2 + (x_2)**2 + 4*(x_3)**2 - 48 <= 0
-                 -5 <= x_1 <= 5
-                 -4 <= x_2 <= 4
-                 -3 <= x_3 <= 3
+    Minimize: f = 0.01 * (x_1)**2 + (x_2)**2
+
+    Subject to: x_1 * x_2 - 25.0 >= 0,
+                (x_1)**2 + (x_2)**2 - 25.0 >= 0,
+                2 <= x_1 <= 50,
+                0 <= x_2 <= 50.
+
+    Approx. Answer:
+        f([(250)**0.5 , (2.5)**0.5]) = 5.0
 
     >>> from scipy.optimize import tgo
     >>> def f(x):
-    ...     return - x[0] * x[1] * x[2]
-    >>> def g_funcs(x):
-    ...     return (x[:, 0])**2 + (x[:, 1])**2 + 4*(x[:, 2])**2 - 48.0
-    >>> bounds = [(-5, 5), (-4, 4), (-3, 3)]
+    ...     return 0.01 * (x[0])**2 + (x[1])**2
+    ...
+    >>> def g1(x):
+    ...     return x[0] * x[1] - 25.0
+    ...
+    >>> def g2(x):
+    ...     return x[0]**2 + x[1]**2 - 25.0
+    ...
+    >>> g = (g1, g2)
+    >>> bounds = [(2, 50), (0, 50)]
+    >>> result = tgo(f, bounds, g_cons=g)
+    >>> result.x, result.fun
+    (array([ 15.81138847,   1.58113881]), 4.9999999999996252)
 
 
     References
@@ -224,9 +243,14 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
     .. [4] S. Joe and F. Y. Kuo (2008) "Constructing Sobol sequences with
            better  two-dimensional projections", SIAM J. Sci. Comput. 30,
            2635-2654
+    .. [5] Hoch, W and Schittkowski, K (1981) "Test examples for nonlinear
+           programming codes." Lecture Notes in Economics and mathematical
+           Systems, 187. Springer-Verlag, New York.
+           http://www.ai7.uni-bayreuth.de/test_problem_coll.pdf
+
     """
     # Initiate TGO class
-    TGOc = TGO(func, bounds, args=args, g_funcs=g_funcs, g_args=g_args, n=n,
+    TGOc = TGO(func, bounds, args=args, g_funcs=g_cons, g_args=g_args, n=n,
                k_t=k_t, callback=callback, minimizer_kwargs=minimizer_kwargs,
                disp=disp)
 
@@ -234,7 +258,7 @@ def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
     TGOc.sampling()
 
     # Find subspace of feasible points
-    if g_funcs is not None: # TODO: Improve
+    if g_cons is not None:
         TGOc.subspace()
 
     # Find topograph
@@ -439,12 +463,7 @@ class TGO(object):
         """Find subspace of feasible points from g_func definition"""
         # Subspace of feasible points.
         for g in self.g_func:
-            #print('='*100)
-            #print(g(self.C.T, *self.g_args))
-            #print(g(self.C.T, *self.g_args) >= 0.0)
             self.C = self.C[g(self.C.T, *self.g_args) >= 0.0]
-
-            # self.C =  self.C[self.g_func(self.C, *self.g_args) >= 0.0]
 
         #TODO: Check if container is empty fail test or increase n
 
@@ -453,8 +472,6 @@ class TGO(object):
         Returns the topographical matrix with True boolean values indicating
         positive entries and False ref. values indicating negative values.
         """
-        #print('C = '*30)
-        #print(self.C)
         self.Y = scipy.spatial.distance.cdist(self.C, self.C, 'euclidean')
         self.Z = numpy.argsort(self.Y, axis=-1)
         self.A = numpy.delete(self.Z, 0, axis=-1)  # Topographical matrix
@@ -472,13 +489,10 @@ class TGO(object):
         self.T = (self.H.T > self.F.T).T  # Topograph with Boolean entries
         return self.T, self.H, self.F
 
-
-
     def k_t_matrix(self, T, k):
         """Returns the k-t topograph matrix"""
         # TODO: Replace delete with simpler array access
         return numpy.delete(T, numpy.s_[k:numpy.shape(T)[1]], axis=-1)
-
 
     def minimizers(self, K):
         """Returns the minimizer indexes of a k-t matrix"""
@@ -486,10 +500,9 @@ class TGO(object):
         # Find data point indexes of minimizers:
         return numpy.where(Minimizers)[0]
 
-
     def K_optimal(self):
         """
-        Returns the optimimal k-t topograph with the semi-empircal correlation
+        Returns the optimal k-t topograph with the semi-empirical correlation
         proposed by Henderson et. al. (2015)
         """
         # TODO: Recheck correct implementation, compare with HS19
