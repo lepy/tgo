@@ -7,8 +7,8 @@ import numpy
 import scipy.spatial
 import scipy.optimize
 
-def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, k_t=None,
-        callback=None, minimizer_kwargs=None, disp=False):
+def tgo(func, bounds, args=(), g_funcs=None, g_args=(), n=100,
+        k_t=None, callback=None, minimizer_kwargs=None, disp=False):
     """
     Finds the global minima of a function using topograhphical global
     optimisation.
@@ -26,65 +26,78 @@ def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, k_t=None,
         defining the lower and upper bounds for the optimizing argument of
         `func`. It is required to have ``len(bounds) == len(x)``.
         ``len(bounds)`` is used to determine the number of parameters in ``x``.
+        Use ``None`` for one of min or max when there is no bound in that
+        direction. By default bounds are ``(None, None)``.
 
     args : tuple, optional
         Any additional fixed parameters needed to completely specify the
         objective function.
 
-    g_func : callable, optional
+    g_cons : tuple of callable functions, optional
         Function used to define a limited subset to defining the feasible set
         of solutions in R^n in the form g(x) <= 0 applied as g : R^n -> R^m
         ex 1. To impose the constraint  x[0] + x[1] + x[2] - 1 >= 0
               Use the function definition
 
-              def g_func(A):  # A is an input array of sample points in R^m*n
-                  return -numpy.sum(A, axis=1) + 1.0#
+              def g_funcs(x):  # x is an input array of sample points in R^m*n
+                  return -numpy.sum(x, axis=1) + 1.0#
 
         ex 2. To impose the constraints:
-              (x[0] - 5)**2 + (x[1] - 5)**2  + 100 >= 0
-              -(x[0] - 6)**2 + (x[1] - 5)**2  + 82.81 >= 0
+              (x[0] - 5)**2 + (x[1] - 5)**2  + 100 <= 0
+              -(x[0] - 6)**2 + (x[1] - 5)**2  - 82.81 <= 0
               Use the function definition
 
-              def g_func(A):
+              def g_funcs(A):
                   return ((-(C[:,0] - 5)**2 - (C[:,1] - 5)**2  - 100.0 >= 0.0)
                          & ((C[:,0] - 6)**2 - (C[:,1] - 5)**2  - 82.81 >= 0.0))
 
+        NOTE: If the ``constraints`` sequence used in the local optimization
+              problem is not defined in ``minimizer_kwargs`` and a constrained
+              method is used then the ``g_cons`` will be used.
+              (Defining a ``constraints`` sequence in ``minimizer_kwargs``
+               means that ``g_cons`` will not be added so if equality
+               constraints and so forth need to be added then the inequality
+               functions in g_cons need to be added again).
 
-    g_args : tuple, optional
+    g_args : sequence of tuples, optional
         Any additional fixed parameters needed to completely specify the
-        feasible set function.
+        feasible set functions ``g_cons``.
+        ex. g_cons = (f1(x, *args1), f2(x, *args2))
+        then
+            g_args = (args1, args2)
 
     n : int, optional
         Number of sampling points used in the construction of the topography
         matrix.
 
-    k : int, optional
+    k_t : int, optional
         Defines the number of columns constructed in the k-t matrix. The higher
         k is the lower the amount of minimisers will be used for local search
         routines. If None the empirical model of Henderson et. al. (2015) will
-        be used. (Note: Lower k values decrease performance, but could
+        be used. (Note: Lower ``k_t`` values decrease performance, but could
         potentially be more robust due to testing more local minimisers in the
-        function hypersuface)
+        function hypersuface.
 
-# TODO:    disp : bool, optional
-        Display status messages
-
-# TODO:    callback : callable, `callback(xk, convergence=val)`, optional:
-        A function to follow the progress of the minimization. ``xk`` is
-        the current value of ``x0``. ``val`` represents the fractional
-        value of the population convergence.  When ``val`` is greater than one
-        the function halts. If callback returns `True`, then the minimization
-        is halted (any polishing is still carried out).
-
-        minimizer_kwargs : dict, optional
+    minimizer_kwargs : dict, optional
         Extra keyword arguments to be passed to the minimizer
-        ``scipy.optimize.minimize()`` Some important options could be:
+        ``scipy.optimize.minimize`` Some important options could be:
 
             method : str
                 The minimization method (e.g. ``SLSQP``)
             args : tuple
                 Extra arguments passed to the objective function (``func``) and
                 its derivatives (Jacobian, Hessian).
+
+    disp : bool, optional # (TODO)
+        Display status messages
+
+    callback : callable, `callback(xk, convergence=val)`, optional: # (TODO)
+        A function to follow the progress of the minimization. ``xk`` is
+        the current value of ``x0``. ``val`` represents the fractional
+        value of the population convergence.  When ``val`` is greater than one
+        the function halts. If callback returns `True`, then the minimization
+        is halted (any polishing is still carried out).
+
 
     Returns
     -------
@@ -104,18 +117,97 @@ def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, k_t=None,
     Notes
     -----
     Global optimization using the Topographical Global Optimization (TGO)
-    method first proposed by Törn (1990) [1] with
-    [ TODO: EXPLAIN k-t matrix use]
-    Hendorson et. al. (2015) [2].
+    method first proposed by Törn (1990) [1] with the the semi-empirical
+    correlation by Hendorson et. al. (2015) [2] for k integer defining the
+    k-t matrix.
 
     The TGO is a clustering method that uses graph theory to generate good
     starting points for local search methods from points distributed uniformly
     in the interior of the feasible set. These points are generated using the
     Sobol (1967) [3] sequence.
 
+    The primitive polynomials and various sets of initial direction numbers for
+    generating Sobol sequences is provided by [4] by Frances Kuo and
+    Stephen Joe. The original program sobol.cc is available and described at
+    http://web.maths.unsw.edu.au/~fkuo/sobol/ translated to  Python 3 by
+    Carl Sandrock 2016-03-31
+
     Examples
     --------
-    TODO
+
+     Note that bounds determine the dimensionality of the objective
+     function and is therefore not optional, however you can speficify
+     empty bounds
+
+    >>> from scipy.optimize import rosen, tgo
+    >>> bounds = [(0,2), (0, 2), (0, 2), (0, 2), (0, 2)]
+    >>> result = differential_evolution(rosen, bounds)
+    >>> result.x, result.fun
+    (array([ 1.,  1.,  1.,  1.,  1.]), 2.9203923741900809e-18)
+
+    >>> from scipy.optimize import tgo
+    >>> import numpy as np
+    >>> def ackley(x):
+    ...     arg1 = -0.2 * np.sqrt(0.5 * (x[0] ** 2 + x[1] ** 2))
+    ...     arg2 = 0.5 * (np.cos(2. * np.pi * x[0]) + np.cos(2. * np.pi * x[1]))
+    ...     return -20. * np.exp(arg1) - np.exp(arg2) + 20. + np.e
+    >>> bounds = [(-5, 5), (-5, 5)]
+    >>> result = tgo(ackley, bounds)
+    >>> result.x, result.fun
+    (array([ -9.02894984e-11,  -9.02900391e-11]), 3.6116221124871117e-10)
+
+
+    >>> from scipy.optimize import tgo
+    >>> import numpy as np
+    >>> def eggholder(x):
+    ...     return (-(x[1] + 47.0)
+    ...             * np.sin(np.sqrt(abs(x[0]/2.0 + (x[1] + 47.0))))
+    ...             - x[0] * np.sin(np.sqrt(abs(x[0] - (x[1] + 47.0))))
+    ...             )
+    ...
+    >>> bounds = [(-512, 512), (-512, 512)]
+    >>> result = tgo(eggholder, bounds)
+    >>> result.x, result.fun
+    (array([ 512.        ,  404.23180542]), -959.64066272085051)
+    >>> result.xl, result.funl
+    (array([[ 512.        ,  404.23180542],
+           [-456.88574619, -382.6233161 ],
+           [ 283.07593402, -487.12566542],
+           [ 324.99187533,  216.0475439 ],
+           [-105.87688985,  423.15324143],
+           [-242.97923629,  274.38032063],
+           [-414.8157022 ,   98.73012628],
+           [ 150.2320956 ,  301.31377513],
+           [  91.00922754, -391.28375925],
+           [ 361.66626134, -106.96489228]]),
+           array([-959.64066272, -786.52599408, -718.16745962, -582.30628005,
+           -565.99778097, -559.78685655, -557.85777903, -493.9605115 ,
+           -426.48799655, -419.31194957]))
+
+    Now suppose we want _ a larger amount of local minima, this can be
+    accomplished by increasing the amount of sampling points:
+
+    >>> result2 = tgo(eggholder, bounds, n=1000)
+    >>> len(result.xl), len(result2.xl)
+    (10, 60)
+
+
+    To add with non-linear constraints
+
+    Minimize: f(x) = - x_1 * x_2 * x_3
+
+    Subject to: (x_1)**2 + (x_2)**2 + 4*(x_3)**2 - 48 <= 0
+                 -5 <= x_1 <= 5
+                 -4 <= x_2 <= 4
+                 -3 <= x_3 <= 3
+
+    >>> from scipy.optimize import tgo
+    >>> def f(x):
+    ...     return - x[0] * x[1] * x[2]
+    >>> def g_funcs(x):
+    ...     return (x[:, 0])**2 + (x[:, 1])**2 + 4*(x[:, 2])**2 - 48.0
+    >>> bounds = [(-5, 5), (-4, 4), (-3, 3)]
+
 
     References
     ----------
@@ -129,16 +221,12 @@ def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, k_t=None,
     .. [3] Sobol, IM (1967) "The distribution of points in a cube and the
            approximate evaluation of integrals. USSR Comput. Math. Math. Phys.
            7, 86-112.
-
-
-    #TODO Add references for direction numbers
-    sobol.cc translated to Python 3 by Carl Sandrock 2016-03-31
-
-    The original program is available and described at
-    http://web.maths.unsw.edu.au/~fkuo/sobol/
+    .. [4] S. Joe and F. Y. Kuo (2008) "Constructing Sobol sequences with
+           better  two-dimensional projections", SIAM J. Sci. Comput. 30,
+           2635-2654
     """
     # Initiate TGO class
-    TGOc = TGO(func, bounds, args=args, g_func=g_func, g_args=g_args, n=n,
+    TGOc = TGO(func, bounds, args=args, g_funcs=g_funcs, g_args=g_args, n=n,
                k_t=k_t, callback=callback, minimizer_kwargs=minimizer_kwargs,
                disp=disp)
 
@@ -146,7 +234,7 @@ def tgo(func, bounds, args=(), g_func=None, g_args=(), n=100, k_t=None,
     TGOc.sampling()
 
     # Find subspace of feasible points
-    if g_func is not None: # TODO: Improve
+    if g_funcs is not None: # TODO: Improve
         TGOc.subspace()
 
     # Find topograph
@@ -175,14 +263,18 @@ class TGO(object):
     This class implements the tgo routine
     """
 
-    def __init__(self, func, bounds, args=(), g_func=None, g_args=(), n=100,
+    def __init__(self, func, bounds, args=(), g_funcs=None, g_args=(), n=100,
                  k_t=None, callback=None, minimizer_kwargs=None,
                  disp=False):
 
         self.func = func
         self.bounds = bounds
         self.args = args
-        self.g_func = g_func
+        if type(g_funcs) is not tuple and type(g_funcs) is not list:
+            self.g_func = (g_funcs,)
+        else:
+            self.g_func = g_funcs
+
         self.g_args = g_args
         self.n = n
         self.k_t = k_t
@@ -190,54 +282,87 @@ class TGO(object):
             self.K_opt = k_t
 
         self.callback = callback
-        self.minimizer_kwargs = minimizer_kwargs
         self.disp = disp
+
+        # set bounds
+        if len(bounds) == 0:
+            pass
+            #raise ValueError('Error: bounds are required to de')
+
+        abound = numpy.array(bounds, float)
+        # Check if obunds are correctly specified
+        if abound.ndim > 1:
+            bnderr = numpy.where(abound[:, 0] > abound[:, 1])[0]
+            # Set none finite values to large floats
+            infind = ~numpy.isfinite(abound)
+            abound[infind[:, 0], 0] = -1e50#e308
+            abound[infind[:, 1], 1] = 1e50#e308
+        else:
+            bnderr = numpy.where(abound[0] > abound[1])[0]
+        if bnderr.any():
+            raise ValueError('Error: lb > ub in bounds %s.' %
+                             ', '.join(str(b) for b in bnderr))
+
+            # Set none finite values to large floats
+            infind = ~numpy.isfinite(abound)
+            abound[infind[0], 0] = -1e50#e308
+            abound[infind[1], 1] = 1e50#e308
+
+        self.bounds = abound
+
+        # Define constraint function used in local minimisation
+        if g_funcs is not None:
+             self.min_cons = []
+             for g in self.g_func:
+                 self.min_cons.append({'type': 'ineq',
+                                       'fun' : g})
+
+        # Define local minimization keyword arguments
+        if minimizer_kwargs is not None:
+            self.minimizer_kwargs = minimizer_kwargs
+            if 'args' not in minimizer_kwargs:
+                self.minimizer_kwargs['args'] = self.args
+
+            if 'method' not in minimizer_kwargs:
+                self.minimizer_kwargs['method'] = 'SLSQP'
+
+            if 'bounds' not in minimizer_kwargs:
+                self.minimizer_kwargs['bounds'] = self.bounds
+
+            if 'options' not in minimizer_kwargs:
+                minimizer_kwargs['options'] = {'ftol': 1e-12}
+
+            if self.minimizer_kwargs['method'] == 'SLSQP' or \
+               self.minimizer_kwargs['method'] == 'COBYLA':
+                if 'constraints' not in minimizer_kwargs:
+                    minimizer_kwargs['constraints'] = self.min_cons
+        else:
+            self.minimizer_kwargs = {'args': self.args,
+                                     'method': 'SLSQP',
+                                     'bounds': self.bounds,
+                                     'options': {'ftol': 1e-12}
+                                     }
+            if g_funcs is not None:
+                self.minimizer_kwargs['constraints'] = self.min_cons
+
+
+            # self.minimizer_kwargs['constraints'] = self.cons
 
         # Initialize return object
         self.res = scipy.optimize.OptimizeResult()
         self.res.nfev = n  # Include each sampling point as func evaluation
         self.res.nlfev = 0  # Local function evals for all minimisers
         self.res.nljev = 0  # Local jacobian evals for all minimisers
-        #self.res.func
 
-        # Define constraint function used in local minimisation
-        if g_func is not None:
-            self.cons = ({'type': 'ineq',  # g_i(x) >= 0,  i = 1,...,m
-                          'fun': g_func,  # The function defining the constraint.
-                          'args': g_args
-                          })
-        else:
-            self.cons = ()
 
-        if minimizer_kwargs is not None:
-            self.minimizer_kwargs = minimizer_kwargs
-            if 'args' not in minimizer_kwargs:
-                minimizer_kwargs['args'] = self.args
-
-            if 'method' not in minimizer_kwargs:
-                minimizer_kwargs['method'] = 'SLSQP'
-
-            if 'bounds' not in minimizer_kwargs:
-                minimizer_kwargs['bounds'] = self.bounds
-
-        else:
-            self.minimizer_kwargs = {'args': self.args,
-                                     'method': 'SLSQP',
-                                     'bounds': self.bounds}
-
-            # self.cons = ({'type' : 'ineq',  # g_i(x) >= 0,  i = 1,...,m
-            #               'fun' : g_func,  # The function defining the constraint.
-            #               'args' : g_args
-            #               })
-
-            #self.minimizer_kwargs['constraints'] = self.cons
 
     def sobol_points(self, N, D):
-        """ sobol.cc translated to Python 3 by Carl Sandrock 2016-03-31
+        """
+        sobol.cc by Frances Kuo and Stephen Joe translated to Python 3 by
+        Carl Sandrock 2016-03-31
 
         The original program is available and described at
         http://web.maths.unsw.edu.au/~fkuo/sobol/
-
         """
         with open('new-joe-kuo-6.21201') as f:
             unsigned = "uint64"
@@ -289,8 +414,6 @@ class TGO(object):
 
             return points
 
-
-    # %% Define funcs # TODO: Create tgo class to wrap all funcs
     def sampling(self):
         """
         Generates uniform sampling points in a hypercube and scales the points
@@ -301,29 +424,37 @@ class TGO(object):
         self.m = len(self.bounds)  # Dimensions
 
         # Generate uniform sample points in R^m
-        #self.B = i4_sobol_generate(self.m, self.n, self.skip)
-        #self.C = numpy.column_stack([self.B[i] for i in range(self.m)])
         self.C = self.sobol_points(self.n, self.m)
+
         # Distribute over bounds
         # TODO: Find a better way to do this
         for i in range(len(self.bounds)):
             self.C[:, i] = (self.C[:, i] *
-                           (self.bounds[i][1] - self.bounds[i][0])
-                           + self.bounds[i][0] )
+                            (self.bounds[i][1] - self.bounds[i][0])
+                            + self.bounds[i][0])
 
         return self.C
 
     def subspace(self):
         """Find subspace of feasible points from g_func definition"""
-         # Subspace of feasible points.
-        self.C =  self.C[self.g_func(self.C, *self.g_args) >= 0.0]
+        # Subspace of feasible points.
+        for g in self.g_func:
+            #print('='*100)
+            #print(g(self.C.T, *self.g_args))
+            #print(g(self.C.T, *self.g_args) >= 0.0)
+            self.C = self.C[g(self.C.T, *self.g_args) >= 0.0]
+
+            # self.C =  self.C[self.g_func(self.C, *self.g_args) >= 0.0]
+
+        #TODO: Check if container is empty fail test or increase n
 
     def topograph(self):
         """
         Returns the topographical matrix with True boolean values indicating
         positive entries and False ref. values indicating negative values.
         """
-
+        #print('C = '*30)
+        #print(self.C)
         self.Y = scipy.spatial.distance.cdist(self.C, self.C, 'euclidean')
         self.Z = numpy.argsort(self.Y, axis=-1)
         self.A = numpy.delete(self.Z, 0, axis=-1)  # Topographical matrix
@@ -343,8 +474,9 @@ class TGO(object):
 
 
 
-    def k_t_matrix(self, T, k):  # TODO: Replace delete with simpler array access
+    def k_t_matrix(self, T, k):
         """Returns the k-t topograph matrix"""
+        # TODO: Replace delete with simpler array access
         return numpy.delete(T, numpy.s_[k:numpy.shape(T)[1]], axis=-1)
 
 
@@ -355,11 +487,12 @@ class TGO(object):
         return numpy.where(Minimizers)[0]
 
 
-    def K_optimal(self): # TODO: Recheck correct implementation, compare with HS19
+    def K_optimal(self):
         """
         Returns the optimimal k-t topograph with the semi-empircal correlation
         proposed by Henderson et. al. (2015)
         """
+        # TODO: Recheck correct implementation, compare with HS19
         K_1 = self.k_t_matrix(self.T, 1)  # 1-t topograph
         k_1 = len(self.minimizers(K_1))
         k_i = k_1
@@ -374,7 +507,8 @@ class TGO(object):
                           / 2.0)
 
         k_opt = int(k_c + 1)
-        if k_opt > numpy.shape(self.T)[1]:  # If size of k_opt exceeds t-graph size.
+        if k_opt > numpy.shape(self.T)[1]:
+            # If size of k_opt exceeds t-graph size.
             k_opt = int(numpy.shape(self.T)[1])
 
         self.K_opt = self.k_t_matrix(self.T, k_opt)
@@ -389,27 +523,15 @@ class TGO(object):
         self.x_vals = []
         self.Func_min = numpy.zeros_like(Min_ind, dtype=float)
 
-
-        options = {'ftol' : 1e-12}
         for i, ind in zip(range(len(Min_ind)), Min_ind):
             # Find minimum x vals
-            lres = scipy.optimize.minimize(self.func, self.C[ind,:],
-                                           args=self.args,
-                                           #method='L-BFGS-B',
-                                           method='SLSQP',
-                                           bounds=self.bounds,
-                                           options=options,
-                                           constraints=self.cons
-                                           )
-
-            # lres = scipy.optimize.minimize(self.func, self.C[ind, :],
-            #                                **self.minimizer_kwargs)
+            lres = scipy.optimize.minimize(self.func, self.C[ind, :],
+                                            **self.minimizer_kwargs)
             self.x_vals.append(lres.x)
             self.Func_min[i] = lres.fun
 
             # Local function evals for all minimisers
             self.res.nlfev += lres.nfev
-            #self.res.nljev = 0  # Local jacobian evals for all minimisers
 
         self.x_vals = numpy.array(self.x_vals)
         # Sort and save
