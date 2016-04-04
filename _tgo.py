@@ -77,6 +77,8 @@ def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
                 Extra arguments passed to the objective function (``func``) and
                 its derivatives (Jacobian, Hessian).
 
+            options : {ftol: 1e-12}
+
     disp : bool, optional # (TODO)
         Display status messages
 
@@ -122,9 +124,13 @@ def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
     the ``SLSQP`` method is used. In general it is recommended to use the
     ``SLSQP`` or ``COBYLA`` local minimization if inequality constraints
     are defined for the problem since the other methods do not use constraints.
-    Performance can sometimes be improved by increasing ``n``
-    Forcing a low ``k_t`` value will
 
+    Performance can sometimes be improved by either increasing or decreasing
+    the amount of sampling points ``n`` depending on the system. Increasing the
+    amount of sampling points can lead to a lower amount of minimisers found
+    which requires fewer local optimisations. Forcing a low ``k_t`` value will
+    nearly always increase the amount of function evaluations that need to be
+    performed, but could lead to increased robustness.
 
     The primitive polynomials and various sets of initial direction numbers for
     generating Sobol sequences is provided by [4] by Frances Kuo and
@@ -157,6 +163,8 @@ def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
     minima and one global minimum.
     (https://en.wikipedia.org/wiki/Test_functions_for_optimization)
 
+    Now consider the Eggholder function
+    (https://en.wikipedia.org/wiki/Test_functions_for_optimization)
     >>> from scipy.optimize import tgo
     >>> from _tgo import tgo
     >>> import numpy as np
@@ -172,7 +180,7 @@ def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
     (array([ 512.        ,  404.23180542]), -959.64066272085051)
 
     ``tgo`` also has a return for any other local minima that was found, these
-     can be called using example:
+     can be called using:
 
     >>> result.xl, result.funl
     (array([[ 512.        ,  404.23180542],
@@ -196,6 +204,7 @@ def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
     >>> len(result.xl), len(result_2.xl)
     (10, 60)
 
+<<<<<<< HEAD
     ...or by lowering the k_t value:
 
     >>> result_3 = tgo(eggholder, bounds, k_t=1)
@@ -470,7 +479,6 @@ class TGO(object):
         Returns the topographical matrix with True boolean values indicating
         positive entries and False ref. values indicating negative values.
         """
-
         self.Y = scipy.spatial.distance.cdist(self.C, self.C, 'euclidean')
         self.Z = numpy.argsort(self.Y, axis=-1)
         # Topographical matrix without signs:
@@ -488,8 +496,6 @@ class TGO(object):
         self.T = (self.H.T > self.F.T).T
         return self.T, self.H, self.F
 
-
-
     def k_t_matrix(self, T, k):
         """Returns the k-t topograph matrix"""
         # TODO: Replace delete with simpler array access
@@ -503,7 +509,7 @@ class TGO(object):
 
     def K_optimal(self):
         """
-        Returns the optimal k-t topography with the semi-empirical correlation
+        Returns the optimal k-t topograph with the semi-empirical correlation
         proposed by Henderson et. al. (2015)
         """
         # TODO: Recheck correct implementation, compare with HS19

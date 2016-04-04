@@ -241,7 +241,6 @@ class Test9(TestFunction):
 
 
     """
-
     def f(self, x):
         return 0.01 * (x[0])**2 + (x[1])**2
 
@@ -254,7 +253,7 @@ class Test9(TestFunction):
     g = (g1, g2)
 
 test9_1 = Test9(bounds=[(2, 50), (0, 50)],
-                expected_x=[250**0.5 , 2.5**0.5],
+                expected_x=[250**0.5, 2.5**0.5],
                 expected_fun=[5.0]
                 )
 
