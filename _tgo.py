@@ -204,7 +204,6 @@ def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
     >>> len(result.xl), len(result_2.xl)
     (10, 60)
 
-<<<<<<< HEAD
     ...or by lowering the k_t value:
 
     >>> result_3 = tgo(eggholder, bounds, k_t=1)
