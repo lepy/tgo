@@ -4,19 +4,12 @@ Unit tests for topographical global optimization algorithm.
 NOTE: For TestTgoFuncs test_f1 and test_f2 adequately test the
       functionality of the algorithm, the rest can be omitted to
       increase speed.
-
-Test Run examples:
-
-ex.
-$ python2 -m unittest -v tgo_tests.TestTgoFuncs
-$ python2 -m unittest -v tgo_tests.TestTgoSubFuncs
-$ python2 -m unittest -v tgo_tests.TestTgoSubFuncs.test_t1
 """
 import unittest
 import numpy
 from _tgo import *
-#from scipy.optimize import _tgo
-#from scipy.optimize._tgo import tgo
+# from scipy.optimize import _tgo
+# from scipy.optimize._tgo import tgo
 
 class TestFunction(object):
     def __init__(self, bounds, expected_x, expected_fun=None,
@@ -38,13 +31,13 @@ test1_1 = Test1(bounds=[(-1, 6), (-1, 6)],
                 expected_x=[0, 0])
 test1_2 = Test1(bounds=[(0, 1), (0, 1)],
                 expected_x=[0, 0])
+test1_3 = Test1(bounds=[(None, None), (None, None)],
+                expected_x=[0, 0])
 
 class Test2(TestFunction):
     """
     Scalar function with several minima to test all minimiser retrievals
     """
-    g = None
-
     def f(self, x):
         return (x - 30) * numpy.sin(x)
 
@@ -52,9 +45,9 @@ class Test2(TestFunction):
         return 58 - numpy.sum(x, axis=0)
 
 test2_1 = Test2(bounds=[(0, 60)],
-                expected_x = [1.53567906],
-                expected_fun = [-28.44677132],  # Important to test that fun
-                                               # return is in the correct order
+                expected_x=[1.53567906],
+                expected_fun=[-28.44677132],
+                # Important to test that funl return is in the correct order
                 expected_xl=numpy.array([[1.53567906],
                                          [55.01782167],
                                          [7.80894889],
@@ -66,7 +59,7 @@ test2_1 = Test2(bounds=[(0, 60)],
                                          [26.43039605],
                                          [30.76371366]]),
 
-                expected_funl = numpy.array([-28.44677132, -24.99785984,
+                expected_funl=numpy.array([-28.44677132, -24.99785984,
                                            -22.16855376, -18.72136195,
                                            -15.89423937, -12.45154942,
                                            -9.63133158,  -6.20801301,
@@ -74,12 +67,11 @@ test2_1 = Test2(bounds=[(0, 60)],
                 )
 
 test2_2 = Test2(bounds=[(0, 4.5)],
-              expected_x = [1.53567906],
-              expected_fun = [-28.44677132],  # Important to test that fun
-                                              # return is in the correct order
-              expected_xl = numpy.array([[1.53567906]]),
-              expected_funl = numpy.array([-28.44677132])
-              )
+                expected_x=[1.53567906],
+                expected_fun=[-28.44677132],
+                expected_xl=numpy.array([[1.53567906]]),
+                expected_funl=numpy.array([-28.44677132])
+                )
 
 
 class Test3(TestFunction):
@@ -256,7 +248,6 @@ class Test9(TestFunction):
     def g1(x):
         return x[0] * x[1] - 25.0
 
-
     def g2(x):
         return x[0]**2 + x[1]**2 - 25.0
 
@@ -304,7 +295,7 @@ test10_1 = Test10(bounds=[(-10, 10),]*7,
 
 def run_test(test, args=(), g_args=()):
     if test is not test10_1:
-        res = tgo(test.f, test.bounds, args=args, g_funcs=test.g,
+        res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
                   g_args=g_args)
 
     #print res
@@ -317,7 +308,7 @@ def run_test(test, args=(), g_args=()):
         res.funl = res.funl[:4]
 
     if test == test10_1:
-        res = tgo(test.f, test.bounds, args=args, g_funcs=test.g,
+        res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
                   g_args=g_args, n=1000)
 
 
@@ -355,6 +346,7 @@ class TestTgoFuncs(unittest.TestCase):
         s = True
         run_test(test1_1, args=(r, s))
         run_test(test1_2, args=(r, s))
+        run_test(test1_3, args=(r, s))
 
     def test_f2(self):
         run_test(test2_1)
@@ -401,7 +393,6 @@ class TestTgoSubFuncs(unittest.TestCase):
     # Init tgo class
     # Note: Using ints for irrelevant class inits like func
     TGOc = TGO(1, (0, 1))
-    #TGOc = TGO()
     # int bool solution for known sampling points
     T_Ans = numpy.array([[0, 0, 0, 0, 0],
                          [0, 1, 1, 1, 1],
@@ -436,21 +427,12 @@ class TestTgoSubFuncs(unittest.TestCase):
         return x[0]**2 + x[1]**2
 
     TGOc.func = f_sub
-    # TODO Test that A and F from this is correct, change recorded vals
-    # to answers
 
-
-    #t_matrix = TGOc.topograph()
-    #H = F[A]
-
-    #T = t_matrix(H, F).astype(int)
     T, H, F = TGOc.topograph()
 
     def test_t1(self):
         """t-matrix construction:"""
         numpy.testing.assert_array_equal(self.T, self.T_Ans)
-
-        #self.assertEqual(B, self.A)
 
     def test_t2(self):
         """k-1 topograph"""
@@ -482,7 +464,6 @@ def tgo_suite():
     TestTgo.addTest(tgo_suite1)
     TestTgo.addTest(tgo_suite2)
     return TestTgo
-
 
 
 if __name__ == '__main__':
