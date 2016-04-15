@@ -163,8 +163,6 @@ def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
     minima and one global minimum.
     (https://en.wikipedia.org/wiki/Test_functions_for_optimization)
 
-    Now consider the Eggholder function
-    (https://en.wikipedia.org/wiki/Test_functions_for_optimization)
     >>> from scipy.optimize import tgo
     >>> from _tgo import tgo
     >>> import numpy as np

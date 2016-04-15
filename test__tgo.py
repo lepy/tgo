@@ -297,7 +297,6 @@ def run_test(test, args=(), g_args=()):
         res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
                   g_args=g_args)
 
-    #print res
     # Exceptional cases
     if test == test5_1:
         # Remove the extra minimizer found in this test
@@ -310,8 +309,26 @@ def run_test(test, args=(), g_args=()):
         res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
                   g_args=g_args, n=1000)
 
-
+    print("=" * 100)
+    print("=" * 100)
+    print("Topographical Global Optimization: ")
+    print("-" * 34)
     print(res)
+
+    from scipy.optimize import differential_evolution, basinhopping
+    res2 = differential_evolution(test.f, test.bounds, args=args)
+    print("=" * 100)
+    print("Differential Evolution: ")
+    print("-" * 23)
+    print(res2)
+
+    print("=" * 100)
+    print("Basinhopping : (x_0 = numpy.mean(bounds,axis=1)) ")
+    x_0 = numpy.mean(test.bounds, axis=1)
+    minimizer_kwargs = {'args': args}
+    res3 = basinhopping(test.f, x_0, minimizer_kwargs=minimizer_kwargs)
+    print("-" * 49)
+    print(res3)
     # Global minima
     if test.expected_x is not None:
         numpy.testing.assert_allclose(res.x, test.expected_x,
@@ -341,24 +358,26 @@ class TestTgoFuncs(unittest.TestCase):
     Global optimisation tests:
     """
     def test_f1(self):
+        """Multivariate test function 1: x[0]**2 + x[1]**2"""
         r = [1, 2, 3]  # random args for test func tuple
         s = True
         run_test(test1_1, args=(r, s))
         run_test(test1_2, args=(r, s))
-        run_test(test1_3, args=(r, s))
+        #run_test(test1_3, args=(r, s))
 
     def test_f2(self):
+        """Scalar opt test on f(x) = (x - 30) * sin(x)"""
         run_test(test2_1)
         run_test(test2_2)
 
     def test_f3(self):
-        """HS19 optimisation:"""
+        """Hock and Schittkowski problem 19"""
         run_test(test3_1)
 
     def test_t4(self):
         """Rosenbrock function"""
         run_test(test4_1)
-        run_test(test4_2)
+        #run_test(test4_2)
 
     def test_t5(self):
         """Himmelblau's function"""
@@ -373,15 +392,15 @@ class TestTgoFuncs(unittest.TestCase):
         run_test(test7_1)
 
     def test_t8(self):
-        """HS 29"""
+        """Hock and Schittkowski problem 29"""
         run_test(test8_1)
 
     def test_t9(self):
-        """HS 18"""
+        """Hock and Schittkowski problem 18 """
         run_test(test9_1)
 
     def test_t910(self):
-        """HS 11"""
+        """ Hock and Schittkowski 11 problem (HS11)"""
         run_test(test10_1)
 
 # $ python2 -m unittest -v tgo_tests.TestTgoSubFuncs
