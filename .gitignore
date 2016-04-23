@@ -25,3 +25,7 @@ xcuserdata
 *.xcuserstate
 
 # Created by .ignore support plugin (hsz.mobi)
+
+# dev
+threading_dev.py 
+threading_dev?.py 

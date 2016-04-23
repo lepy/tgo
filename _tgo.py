@@ -6,7 +6,7 @@ from __future__ import division, print_function, absolute_import
 import numpy
 import scipy.spatial
 import scipy.optimize
-
+from multiprocessing import Pool
 
 def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
         k_t=None, callback=None, minimizer_kwargs=None, disp=False):
@@ -532,19 +532,42 @@ class TGO(object):
         self.K_opt = self.k_t_matrix(self.T, k_opt)
         return self.K_opt
 
+    def minimizer_return(self):
+        """
+
+        """
+        lres = scipy.optimize.minimize(self.func, self.C[ind, :],
+                                       **self.minimizer_kwargs)
+
+        self.x_vals.append(lres.x)
+        self.Func_min[i] = lres.fun
+
+        # Local function evals for all minimisers
+        self.res.nlfev += lres.nfev
+
+    def process_pool(self, ind):
+        lres = scipy.optimize.minimize(self.func, self.C[ind, :],
+                                       **self.minimizer_kwargs)
+        return lres
+
     def l_minima(self):
         """
         Find the local minima using the chosen local minimisation method with
         the minimisers as starting points.
         """
+        from multiprocessing import Pool
+
         Min_ind = self.minimizers(self.K_opt)
         self.x_vals = []
         self.Func_min = numpy.zeros_like(Min_ind, dtype=float)
+        p = Pool()
+        lres_list = p.map(self.process_pool, Min_ind)
 
         for i, ind in zip(range(len(Min_ind)), Min_ind):
             # Find minimum x vals
-            lres = scipy.optimize.minimize(self.func, self.C[ind, :],
-                                            **self.minimizer_kwargs)
+            # lres = scipy.optimize.minimize(self.func, self.C[ind, :],
+            #                                 **self.minimizer_kwargs)
+            lres = lres_list[i]
             self.x_vals.append(lres.x)
             self.Func_min[i] = lres.fun
 
