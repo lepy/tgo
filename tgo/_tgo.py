@@ -6,8 +6,12 @@ from __future__ import division, print_function, absolute_import
 import numpy
 import scipy.spatial
 import scipy.optimize
-from multiprocessing_on_dill import Pool
 from . import __file__
+
+try:
+    from multiprocessing_on_dill import Pool
+except ImportError:
+    from multiprocessing import Pool
 
 def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
         k_t=None, callback=None, minimizer_kwargs=None, disp=False):
