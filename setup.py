@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(name='tgo',
@@ -14,4 +14,5 @@ setup(name='tgo',
           'scipy',
           'numpy',
       ],
+      test_suite='tgo.tests.tgo_test.tgo_suite',
       zip_safe=False)
