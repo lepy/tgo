@@ -7,6 +7,7 @@ import numpy
 import scipy.spatial
 import scipy.optimize
 from multiprocessing import Pool
+from . import __file__
 
 def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
         k_t=None, callback=None, minimizer_kwargs=None, disp=False):
@@ -393,7 +394,9 @@ class TGO(object):
         http://web.maths.unsw.edu.au/~fkuo/sobol/
         """
         import gzip
-        with gzip.open('new-joe-kuo-6.21201.gz') as f:
+        import os
+        path = os.path.join(os.path.dirname(__file__), 'new-joe-kuo-6.21201.gz')
+        with gzip.open(path) as f:
             unsigned = "uint64"
             # swallow header
             buffer = next(f)
