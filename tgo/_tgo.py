@@ -6,7 +6,7 @@ from __future__ import division, print_function, absolute_import
 import numpy
 import scipy.spatial
 import scipy.optimize
-from multiprocessing import Pool
+from multiprocessing_on_dill import Pool
 from . import __file__
 
 def tgo(func, bounds, args=(), g_cons=None, g_args=(), n=100,
@@ -558,7 +558,6 @@ class TGO(object):
         Find the local minima using the chosen local minimisation method with
         the minimisers as starting points.
         """
-        from multiprocessing import Pool
 
         Min_ind = self.minimizers(self.K_opt)
         self.x_vals = []

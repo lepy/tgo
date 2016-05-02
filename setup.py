@@ -8,4 +8,10 @@ setup(name='tgo',
       description='Implementation of the topographical global optimisationalgorithm',
       url='https://github.com/stefan-endres/tgo',
       include_package_data=True,
-      packages=['tgo'])
+      packages=['tgo'],
+      install_requires=[
+          'multiprocessing_on_dill',
+          'scipy',
+          'numpy',
+      ],
+      zip_safe=False)
