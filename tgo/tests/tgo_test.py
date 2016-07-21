@@ -294,9 +294,18 @@ test10_1 = Test10(bounds=[(-10, 10),]*7,
                   )
 
 def run_test(test, args=(), g_args=()):
+    def callfun(x):
+        print('callfun = {}'.format(x))
+        return
+
     if test is not test10_1:
         res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
-                  g_args=g_args)
+                  g_args=g_args, multiproc=True,
+                  callback=callfun,
+                  options={'maxfev': 650,
+                           'ftol': 1e-12,
+                           'disp': True}
+                  )
 
     # Exceptional cases
     if test == test5_1:
@@ -310,26 +319,29 @@ def run_test(test, args=(), g_args=()):
         res = tgo(test.f, test.bounds, args=args, g_cons=test.g,
                   g_args=g_args, n=1000)
 
-    print("=" * 100)
-    print("=" * 100)
-    print("Topographical Global Optimization: ")
-    print("-" * 34)
-    print(res)
+    if False:
+        print("=" * 100)
+        print("=" * 100)
+        print("Topographical Global Optimization: ")
+        print("-" * 34)
+        print(res)
 
-    from scipy.optimize import differential_evolution, basinhopping
-    res2 = differential_evolution(test.f, test.bounds, args=args)
-    print("=" * 100)
-    print("Differential Evolution: ")
-    print("-" * 23)
-    print(res2)
+    if False:
+        from scipy.optimize import differential_evolution, basinhopping
+        res2 = differential_evolution(test.f, test.bounds, args=args)
+        print("=" * 100)
+        print("Differential Evolution: ")
+        print("-" * 23)
+        print(res2)
 
-    print("=" * 100)
-    print("Basinhopping : (x_0 = numpy.mean(bounds,axis=1)) ")
-    x_0 = numpy.mean(test.bounds, axis=1)
-    minimizer_kwargs = {'args': args}
-    res3 = basinhopping(test.f, x_0, minimizer_kwargs=minimizer_kwargs)
-    print("-" * 49)
-    print(res3)
+        print("=" * 100)
+        print("Basinhopping : (x_0 = numpy.mean(bounds,axis=1)) ")
+        x_0 = numpy.mean(test.bounds, axis=1)
+        minimizer_kwargs = {'args': args}
+        res3 = basinhopping(test.f, x_0, minimizer_kwargs=minimizer_kwargs)
+        print("-" * 49)
+        print(res3)
+
     # Global minima
     if test.expected_x is not None:
         numpy.testing.assert_allclose(res.x, test.expected_x,
@@ -473,6 +485,11 @@ class TestTgoSubFuncs(unittest.TestCase):
         """K_optimal"""
         numpy.testing.assert_array_equal(self.TGOc.K_optimal(), self.T_Ans)
 
+
+from numpy.testing import (assert_equal, TestCase, assert_allclose,
+                           run_module_suite, assert_almost_equal,
+                           assert_string_equal)
+
 def tgo_suite():
     """
     Gather all the TGO tests from this module in a test suite.
@@ -485,6 +502,10 @@ def tgo_suite():
     return TestTgo
 
 
+class TestTGO(TestCase):
+    pass
+
 if __name__ == '__main__':
-    TestTgo=tgo_suite()
+    #run_module_suite()
+    TestTgo = tgo_suite()
     unittest.TextTestRunner(verbosity=2).run(TestTgo)

@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='tgo',
-      version='0.1',
+      version='0.22,
       description='Implementation of the topographical global optimisation algorithm',
       url='https://github.com/stefan-endres/tgo',
       include_package_data=True,
